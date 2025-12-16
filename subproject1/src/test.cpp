@@ -14,7 +14,7 @@ int main(int argc, char *argv[])
     #ifdef _WIN32
     SetConsoleOutputCP(CP_UTF8);
     #endif
-    
+
     try
     {
         // 连接到数据库
@@ -90,28 +90,29 @@ int main(int argc, char *argv[])
 
         // 5、事务处理 两次更新数据 最后提交
         {
-            pqxx::work tx(conn);
             try
             {
-                // 第一次更新
-                std::string update_sql = "UPDATE COMPANY_1 SET AGE = 30 WHERE ID = 1;";
-                result result1 = tx.exec(update_sql);
-                // 第二次更新
-                std::string update_sql2 = "UPDATE COMPANY_1 SET AGE = abc WHERE ID = 3;";
-                result result2 = tx.exec(update_sql2);
+                pqxx::work tx(conn);
+
+                // 第一次更新（参数化）
+                std::string update_sql = "UPDATE COMPANY_1 SET AGE = $1 WHERE ID = $2;";
+                result result1 = tx.exec(update_sql, pqxx::params{30, 1});
+                // 第二次更新(这里用字符串更新整数类型字段，测试SQL error触发回滚)
+                result result2 = tx.exec(update_sql, pqxx::params{"abc", 3});
                 tx.commit();
                 cout << "Transaction committed successfully." << endl;
+                cout << "Rows affected (1st update): " << result1.affected_rows() << endl;
+                cout << "Rows affected (2nd update): " << result2.affected_rows() << endl;
             }
             catch (const pqxx::sql_error &e) // 捕获SQL异常
             {
                 cerr << "SQL error: " << e.what() << std::endl;
                 cerr << "Query was: " << e.query() << std::endl;
-                tx.abort(); // 回滚事务
+                
             }
             catch (const std::exception &e) // 捕获一般标准异常
             {
-                cerr << "Transaction failed: " << e.what() << std::endl;
-                tx.abort(); // 自动回滚
+                cerr << "Transaction failed: " << e.what() << std::endl;   
             }
         }
 
