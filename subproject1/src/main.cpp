@@ -1,5 +1,5 @@
-#include <iostream>
-#include <pqxx/pqxx> 
+// #include <iostream>
+// #include <pqxx/pqxx> 
 
 // using namespace std;
 // using namespace pqxx;
@@ -103,30 +103,30 @@
 //     return 0;
 // }
 
-//多种查询方式演示
-int main()
-{
-    try
-    {
-        // 连接到数据库
-        pqxx::connection conn("dbname = testDB1 user = lzy password = lzy \
-                    hostaddr = 127.0.0.1 port = 5432");
+// //多种查询方式演示
+// int main()
+// {
+//     try
+//     {
+//         // 连接到数据库
+//         pqxx::connection conn("dbname = testDB1 user = lzy password = lzy \
+//                     hostaddr = 127.0.0.1 port = 5432");
 
-        // 创建一个事务对象
-        pqxx::work W(conn);
-        //  pqxx::work W{conn};
+//         // 创建一个事务对象
+//         pqxx::work W(conn);
+//         //  pqxx::work W{conn};
 
-        // 使用query方法执行查询
-        for (auto [name, salary] : W.query<std::string, int>(
-        "SELECT name, salary FROM employee ORDER BY name"))
-        {
-            std::cout << name << " earns " << salary << ".\n";
-        }
+//         // 使用query方法执行查询
+//         for (auto [name, salary] : W.query<std::string, int>(
+//         "SELECT name, salary FROM employee ORDER BY name"))
+//         {
+//             std::cout << name << " earns " << salary << ".\n";
+//         }
 
-    }
-    catch(const std::exception& e)
-    {
-        std::cerr <<"ERROR: " << e.what() << '\n';
-    }
+//     }
+//     catch(const std::exception& e)
+//     {
+//         std::cerr <<"ERROR: " << e.what() << '\n';
+//     }
     
-}
+// }
