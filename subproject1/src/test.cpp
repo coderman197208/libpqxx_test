@@ -1,3 +1,7 @@
+#ifdef _WIN32
+#include <windows.h>
+#endif
+
 #include <iostream>
 #include <pqxx/pqxx>
 
@@ -6,6 +10,11 @@ using namespace pqxx;
 
 int main(int argc, char *argv[])
 {
+    // 设置控制台编码为UTF-8
+    #ifdef _WIN32
+    SetConsoleOutputCP(CP_UTF8);
+    #endif
+    
     try
     {
         // 连接到数据库
@@ -62,29 +71,56 @@ int main(int argc, char *argv[])
         //     }
         // }
 
-        // 3、获取表的记录数
-        {
+        // // 3、获取表的记录数
+        // {
 
-            pqxx::nontransaction ntx(conn);
-            std::string count_sql = "SELECT COUNT(*) FROM COMPANY_1;";
-            result count_result = ntx.exec(count_sql);
-            cout << "Total records in COMPANY_1: " << count_result[0][0].as<int>() << endl;
+        //     pqxx::nontransaction ntx(conn);
+        //     std::string count_sql = "SELECT COUNT(*) FROM COMPANY_1;";
+        //     result count_result = ntx.exec(count_sql);
+        //     cout << "Total records in COMPANY_1: " << count_result[0][0].as<int>() << endl;
+        // }
+
+        // // 4、获取age的最大值
+        // {
+        //     pqxx::nontransaction ntx(conn);
+        //     std::string max_age_sql = "SELECT MAX(AGE) FROM COMPANY_1;";
+        //     result max_age_result = ntx.exec(max_age_sql);
+        //     cout << "Max age in COMPANY_1: " << max_age_result[0][0].as<int>() << endl;
+        // }
+
+        // 5、事务处理 两次更新数据 最后提交
+        {
+            pqxx::work tx(conn);
+            try
+            {
+                // 第一次更新
+                std::string update_sql = "UPDATE COMPANY_1 SET AGE = 30 WHERE ID = 1;";
+                result result1 = tx.exec(update_sql);
+                // 第二次更新
+                std::string update_sql2 = "UPDATE COMPANY_1 SET AGE = abc WHERE ID = 3;";
+                result result2 = tx.exec(update_sql2);
+                tx.commit();
+                cout << "Transaction committed successfully." << endl;
+            }
+            catch (const pqxx::sql_error &e) // 捕获SQL异常
+            {
+                cerr << "SQL error: " << e.what() << std::endl;
+                cerr << "Query was: " << e.query() << std::endl;
+                tx.abort(); // 回滚事务
+            }
+            catch (const std::exception &e) // 捕获一般标准异常
+            {
+                cerr << "Transaction failed: " << e.what() << std::endl;
+                tx.abort(); // 自动回滚
+            }
         }
 
-        // 4、获取age的最大值
-        {
-            pqxx::nontransaction ntx(conn);
-            std::string max_age_sql = "SELECT MAX(AGE) FROM COMPANY_1;";
-            result max_age_result = ntx.exec(max_age_sql);
-            cout << "Max age in COMPANY_1: " << max_age_result[0][0].as<int>() << endl;
-        }
-
-        conn.close();
-    }
-    catch (const std::exception &e)
-    {
-        cerr << e.what() << std::endl;
-        return 1;
-    }
-    return 0;
+    conn.close();
+}
+catch (const std::exception &e) // 捕获一般标准异常
+{
+    cerr << e.what() << std::endl;
+    return 1;
+}
+return 0;
 }
