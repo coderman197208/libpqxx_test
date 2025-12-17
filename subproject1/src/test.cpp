@@ -80,41 +80,41 @@ int main(int argc, char *argv[])
         //     cout << "Total records in COMPANY_1: " << count_result[0][0].as<int>() << endl;
         // }
 
-        // // 4、获取age的最大值
-        // {
-        //     pqxx::nontransaction ntx(conn);
-        //     std::string max_age_sql = "SELECT MAX(AGE) FROM COMPANY_1;";
-        //     result max_age_result = ntx.exec(max_age_sql);
-        //     cout << "Max age in COMPANY_1: " << max_age_result[0][0].as<int>() << endl;
-        // }
-
-        // 5、事务处理 两次更新数据 最后提交
+        // 4、获取age的最大值
         {
-            try
-            {
-                pqxx::work tx(conn);
-
-                // 第一次更新（参数化）
-                std::string update_sql = "UPDATE COMPANY_1 SET AGE = $1 WHERE ID = $2;";
-                result result1 = tx.exec(update_sql, pqxx::params{30, 1});
-                // 第二次更新(这里用字符串更新整数类型字段，测试SQL error触发回滚)
-                result result2 = tx.exec(update_sql, pqxx::params{"abc", 3});
-                tx.commit();
-                cout << "Transaction committed successfully." << endl;
-                cout << "Rows affected (1st update): " << result1.affected_rows() << endl;
-                cout << "Rows affected (2nd update): " << result2.affected_rows() << endl;
-            }
-            catch (const pqxx::sql_error &e) // 捕获SQL异常
-            {
-                cerr << "SQL error: " << e.what() << std::endl;
-                cerr << "Query was: " << e.query() << std::endl;
-                
-            }
-            catch (const std::exception &e) // 捕获一般标准异常
-            {
-                cerr << "Transaction failed: " << e.what() << std::endl;   
-            }
+            pqxx::nontransaction ntx(conn);
+            std::string max_age_sql = "SELECT MAX(AGE) FROM COMPANY_1;";
+            result max_age_result = ntx.exec(max_age_sql);
+            cout << "Max age in COMPANY_1: " << max_age_result[0][0].as<int>() << endl;
         }
+
+        // // 5、事务处理 两次更新数据 最后提交
+        // {
+        //     try
+        //     {
+        //         pqxx::work tx(conn);
+
+        //         // 第一次更新（参数化）
+        //         std::string update_sql = "UPDATE COMPANY_1 SET AGE = $1 WHERE ID = $2;";
+        //         result result1 = tx.exec(update_sql, pqxx::params{30, 1});
+        //         // 第二次更新(这里用字符串更新整数类型字段，测试SQL error触发回滚)
+        //         result result2 = tx.exec(update_sql, pqxx::params{"abc", 3});
+        //         tx.commit();
+        //         cout << "Transaction committed successfully." << endl;
+        //         cout << "Rows affected (1st update): " << result1.affected_rows() << endl;
+        //         cout << "Rows affected (2nd update): " << result2.affected_rows() << endl;
+        //     }
+        //     catch (const pqxx::sql_error &e) // 捕获SQL异常
+        //     {
+        //         cerr << "SQL error: " << e.what() << std::endl;
+        //         cerr << "Query was: " << e.query() << std::endl;
+                
+        //     }
+        //     catch (const std::exception &e) // 捕获一般标准异常
+        //     {
+        //         cerr << "Transaction failed: " << e.what() << std::endl;   
+        //     }
+        // }
 
     conn.close();
 }
