@@ -1,3 +1,17 @@
-# 最简单的配置项
+# 线程配置项
 thread_count: 5     # 要创建的线程数量
 daemon_mode: true  # 运行模式：true(守护进程), false(前台进程)
+
+
+# 日志配置
+log_console: false           # 是否启用控制台输出
+level: "info"               # 文件输出的最低日志级别
+pattern: "[%Y-%m-%d %H:%M:%S.%e] [%l] [%s:%#] [%t] %v" #日志格式模式：[年-月-日 时:分:秒.毫秒] [日志级别] [源文件:行号] [线程ID] 实际日志消息
+filename: "logs/log.txt"    # 日志文件路径
+immediate_flush: true # 是否立即刷新到磁盘
+
+# 按大小滚动配置（单位: kb）
+max_size: 1
+  
+# 最大文件数
+max_files: 3

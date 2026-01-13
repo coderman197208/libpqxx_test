@@ -13,11 +13,13 @@ if(WIN32)
     # Windows: 使用标准CMake查找
     find_package(libpqxx REQUIRED)
     find_package(yaml-cpp REQUIRED)
+    find_package(spdlog REQUIRED)
 else()
     # Linux: 使用pkg-config
     find_package(PkgConfig REQUIRED)
     pkg_check_modules(LIBPQXX REQUIRED libpqxx)
     pkg_check_modules(YAML_CPP REQUIRED yaml-cpp)
+    pkg_check_modules(SPDLOG REQUIRED spdlog)
     
     # 创建统一的目标名称
     add_library(libpqxx::pqxx INTERFACE IMPORTED)
@@ -29,10 +31,13 @@ else()
     target_include_directories(yaml-cpp::yaml-cpp INTERFACE ${YAML_CPP_INCLUDE_DIRS})
     target_link_libraries(yaml-cpp::yaml-cpp INTERFACE ${YAML_CPP_LIBRARIES})
 
+    # 创建统一的目标名称
+    add_library(spdlog::spdlog INTERFACE IMPORTED)
+    target_include_directories(spdlog::spdlog INTERFACE ${SPDLOG_INCLUDE_DIRS})
+    target_link_libraries(spdlog::spdlog INTERFACE ${SPDLOG_LIBRARIES})
+
 endif()
 
-# # 设置 yaml-cpp 库文件路径变量
-# set(YAML_CPP_LIBRARY "${CMAKE_SOURCE_DIR}/lib/libyaml-cpp.a")
 
 # 设置公共头文件路径变量
 set(COMMON_INCLUDE_DIR "${CMAKE_SOURCE_DIR}/common_include")

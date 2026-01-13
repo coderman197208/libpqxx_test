@@ -19,15 +19,9 @@ target_link_libraries(${PROJECT_NAME}
     PRIVATE
         libpqxx::pqxx      # PostgreSQL C++库
         yaml-cpp::yaml-cpp # yaml-cpp库
+        spdlog::spdlog   # spdlog库
 )
 
-# # 如果使用独立编译的静态库，添加编译定义
-# target_compile_definitions(${PROJECT_NAME} PRIVATE 
-#     YAML_CPP_STATIC_DEFINE
-# )
-
-# # 链接 yaml-cpp 静态库
-# target_link_libraries(${PROJECT_NAME} PRIVATE ${YAML_CPP_LIBRARY})
 
 
 
