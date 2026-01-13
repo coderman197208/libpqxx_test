@@ -24,15 +24,16 @@ void becomeDaemon()
         exit(EXIT_SUCCESS); // 2. 父进程退出，让子进程继续运行
 
     setsid(); // 3. 创建新的会话，使进程脱离终端控制，在新会话中成为领导进程
-
+    std::cout << "新会话创建成功，进程已脱离终端控制。" << std::endl;
     // // 4. 关闭标准输入输出（可选，这里保持打开以便观察）
     close(STDIN_FILENO);
     close(STDOUT_FILENO);
     close(STDERR_FILENO);
+    std::cout << "标准输入输出已关闭。" << std::endl;//不会显示
 
     // 5. 将工作目录改为根目录（避免占用可卸载的文件系统）
     chdir("/tmp");
-
+    //不会显示
     std::cout << "已转换为守护进程运行（PID: " << getpid() << "）" << std::endl;
 }
 
