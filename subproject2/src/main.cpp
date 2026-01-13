@@ -16,6 +16,8 @@
 
 #include "CConfig.h" // 你的配置管理类
 
+bool bExit = false;
+
 // 全局日志记录器
 std::shared_ptr<spdlog::logger> g_logger;
 
@@ -213,8 +215,14 @@ void threadTask(int id)
     g_logger->info("线程 {} 开始执行 (PID: {}, TID: {})",
                    id, getpid(), thread_id_str);
 
-    // 模拟工作：让线程睡眠1秒
-    std::this_thread::sleep_for(std::chrono::seconds(1));
+    int loop_count = 0;
+    while(!bExit)
+    {
+        g_logger->info("线程 {} 正在运行执行第 {} 次任务 (PID: {}, TID: {})",
+                   id, ++loop_count, getpid(), thread_id_str);
+        std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+    }
+
     // 打印线程执行信息
     std::cout << "线程 " << id << " 执行完毕 (PID: " << getpid() << ", TID: " << thread_id_str << ")" << std::endl;
 }
@@ -299,20 +307,20 @@ int main()
     // std::this_thread::sleep_for(std::chrono::seconds(200)); // 给时间观察输出
 
     // 如果守护进程模式，持续运行一段时间以便观察
-    if (daemonMode)
-    {
-        std::cout << "守护进程将持续运行（观察日志文件查看状态）..." << std::endl;
-        for (int i = 0; i < 20; ++i)
-        {
-            std::this_thread::sleep_for(std::chrono::seconds(10));
-            g_logger->info("守护进程运行中... {}0秒已过", i + 1);
-        }
-    }
-    else
-    {
-        // 前台模式，短暂等待后退出
-        std::this_thread::sleep_for(std::chrono::seconds(3));
-    }
+    // if (daemonMode)
+    // {
+    //     std::cout << "守护进程将持续运行（观察日志文件查看状态）..." << std::endl;
+    //     for (int i = 0; i < 20; ++i)
+    //     {
+    //         std::this_thread::sleep_for(std::chrono::seconds(10));
+    //         g_logger->info("守护进程运行中... {}0秒已过", i + 1);
+    //     }
+    // }
+    // else
+    // {
+    //     // 前台模式，短暂等待后退出
+    //     std::this_thread::sleep_for(std::chrono::seconds(3));
+    // }
 
     // 确保所有日志写入文件
     g_logger->flush();
