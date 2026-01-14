@@ -180,7 +180,11 @@ bool initLogging(CConfig &config)
 // 1、 转换为守护进程的函数
 void becomeDaemon()
 {
+    // 保存当前工作目录，确保日志文件路径正确
+    std::string original_cwd = std::filesystem::current_path().string();
+    
     g_logger->info("开始转换为守护进程...");
+    g_logger->info("原始工作目录: {}", original_cwd);
 
     pid_t pid = fork(); // 1. 创建子进程
     if (pid < 0)        // pid < 0: 创建失败
@@ -211,10 +215,13 @@ void becomeDaemon()
     }
     std::cout << "标准输入输出已关闭。" << std::endl; // 不会显示
 
-    // 5. 将工作目录改为根目录（避免占用可卸载的文件系统）
-    chdir("/tmp");
+    // 5. 保持在原工作目录，而不是切换到/tmp
+    // 这样可以确保相对路径的日志文件能够正确访问
+    // chdir("/tmp");  // 注释掉：避免影响日志文件路径
+    chdir(original_cwd.c_str());  // 切换回原工作目录
 
     g_logger->info("已转换为守护进程运行（PID: {}）", getpid());
+    g_logger->info("工作目录: {}", std::filesystem::current_path().string());
 }
 
 // 2、线程要执行的任务
