@@ -184,18 +184,31 @@ void becomeDaemon()
 
     pid_t pid = fork(); // 1. 创建子进程
     if (pid < 0)        // pid < 0: 创建失败
+    {
         std::cout << "创建子进程失败！" << std::endl,
-            exit(EXIT_FAILURE);
+        exit(EXIT_FAILURE);
+    }
     if (pid > 0) // pid > 0: 当前是父进程，pid是子进程ID
+    {
         std::cout << "父进程退出，子进程继续运行（PID: " << pid << "）" << std::endl,
-            exit(EXIT_SUCCESS); // 2. 父进程退出，让子进程继续运行
+        exit(EXIT_SUCCESS); // 2. 父进程退出，让子进程继续运行
+    }
 
     setsid(); // 3. 创建新的会话，使进程脱离终端控制，在新会话中成为领导进程
     std::cout << "新会话创建成功，进程已脱离终端控制。" << std::endl;
     // // 4. 关闭标准输入输出（可选，这里保持打开以便观察）
-    close(STDIN_FILENO);
-    close(STDOUT_FILENO);
-    close(STDERR_FILENO);
+    // close(STDIN_FILENO);
+    // close(STDOUT_FILENO);
+    // close(STDERR_FILENO);
+        // 重定向标准输入输出
+    int null_fd = open("/dev/null", O_RDWR);
+    if (null_fd != -1)
+    {
+        dup2(null_fd, STDIN_FILENO);
+        dup2(null_fd, STDOUT_FILENO);
+        dup2(null_fd, STDERR_FILENO);
+        close(null_fd);
+    }
     std::cout << "标准输入输出已关闭。" << std::endl; // 不会显示
 
     // 5. 将工作目录改为根目录（避免占用可卸载的文件系统）
@@ -220,8 +233,10 @@ void threadTask(int id)
     {
         g_logger->info("线程 {} 正在运行执行第 {} 次任务 (PID: {}, TID: {})",
                    id, ++loop_count, getpid(), thread_id_str);
-        std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
     }
+
+    g_logger->info("线程 {} 正在运行执行完毕", id);    
 
     // 打印线程执行信息
     std::cout << "线程 " << id << " 执行完毕 (PID: " << getpid() << ", TID: " << thread_id_str << ")" << std::endl;
@@ -262,7 +277,7 @@ int main()
     std::cout << "  - 运行模式: " << (daemonMode ? "守护进程" : "前台进程") << std::endl;
 
     // 测试文件滚动
-    test_log_rotation();
+    // test_log_rotation();
 
     // 在日志中记录关键系统事件
     g_logger->info("========== 应用程序启动 ==========");
