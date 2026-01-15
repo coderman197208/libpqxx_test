@@ -31,7 +31,8 @@
       {
         "CMAKE_C_COMPILER": "gcc",
         "CMAKE_CXX_COMPILER": "g++",
-        "CMAKE_CXX_FLAGS": "-g -Wall -Wextra -pthread"
+        "CMAKE_CXX_FLAGS": "-g -Wall -Wextra -pthread",
+        "CMAKE_TOOLCHAIN_FILE": "/opt/vcpkg/scripts/buildsystems/vcpkg.cmake"
       },
       "condition": 
       {

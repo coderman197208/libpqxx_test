@@ -7,6 +7,7 @@
 #include <chrono>   // 时间库，处理时间间隔
 #include <unistd.h> // Unix标准头文件，提供fork、getpid等系统调用
 #include <signal.h> // 信号处理库，用于处理SIGINT和SIGTERM
+#include <fcntl.h>  // 文件控制，提供open函数和O_RDWR等标志
 
 #include <filesystem> // 文件系统库，用于创建目录
 #include "spdlog/spdlog.h"
@@ -43,6 +44,8 @@ void signalHandler(int signum)
     }
     
     bExit = true;
+
+
 }
 
 // 辅助函数：日志级别字符串转换为spdlog级别
