@@ -13,6 +13,7 @@
 #include "spdlog/spdlog.h"
 #include "spdlog/sinks/rotating_file_sink.h"
 #include "spdlog/sinks/stdout_color_sinks.h"
+#include <pqxx/pqxx> // libpqxx数据库
 #include <sstream>  // 字符串流，用于格式化
 #include <sys/stat.h>  // 添加这个头文件
 
@@ -44,7 +45,6 @@ void signalHandler(int signum)
     }
     
     bExit = true;
-
 
 }
 
@@ -175,7 +175,7 @@ bool initLogging(CConfig &config)
     }
 }
 
-// 1、 转换为守护进程的函数
+// 转换为守护进程的函数
 void becomeDaemon()
 {
     // 保存当前工作目录，确保日志文件路径正确
@@ -218,14 +218,13 @@ void becomeDaemon()
     g_logger->info("工作目录: {}", std::filesystem::current_path().string());
 }
 
-// 2、线程要执行的任务
+// 循环创建线程的线程任务
 void threadTask(int id)
 {
     // 获取当前线程ID的字符串
     std::string thread_id_str = get_thread_id_str();
 
     // 记录线程开始（只在日志中记录，不在控制台输出）
-    //std::this_thread::get_id() 无法执行，一直出错，所有换成使用字符串转化函数
     g_logger->info("线程 {} 开始执行 (PID: {}, TID: {})",
                    id, getpid(), thread_id_str);
 
@@ -243,10 +242,78 @@ void threadTask(int id)
     std::cout << "线程 " << id << " 执行完毕 (PID: " << getpid() << ", TID: " << thread_id_str << ")" << std::endl;
 }
 
+// 数据库线程任务：在独立连接中执行简单的读写操作
+void dbThreadTask(const std::string &conn_str, int id)
+{
+    std::string thread_id_str = get_thread_id_str();
+    g_logger->info("数据库线程 {} 启动 (TID: {})", id, thread_id_str);
+
+    try
+    {
+        pqxx::connection conn(conn_str);
+        if (!conn.is_open())
+        {
+            g_logger->error("数据库连接未打开");
+            return;
+        }else
+        {
+            g_logger->info("数据库连接成功 (数据库: {})", conn.dbname());
+        }
+
+        // 执行查询操作
+        {
+            // 示例查询：按 user_id 获取用户信息（避免与函数参数 id 冲突）
+            int user_id = 1; 
+            const std::string sql = "SELECT * FROM users WHERE id = $1;";
+            pqxx::nontransaction txn(conn);
+            pqxx::result result = txn.exec_params(sql, user_id);
+
+            if (!result.empty())
+            {
+                const auto &r = result[0];
+                try {
+                    int rid = r["id"].as<int>();
+                    std::string username = r["username"].as<std::string>();
+                    std::string full_name = r["full_name"].as<std::string>();
+                    std::string email = r["email"].as<std::string>();
+                    std::string phone = r["phone"].as<std::string>();
+
+                    // std::cout << "id = " << rid << std::endl;
+                    // std::cout << "username = " << username << std::endl;
+                    // std::cout << "full_name = " << full_name << std::endl;
+                    // std::cout << "email = " << email << std::endl;
+                    // std::cout << "phone = " << phone << std::endl;
+                    g_logger->info("查询结果 - id: {}, username: {}, full_name: {}, email: {}, phone: {}",
+                                   rid, username, full_name, email, phone);
+                }
+                catch (const std::exception &e)
+                {
+                    g_logger->warn("解析查询结果失败: {}", e.what());
+                }
+            }
+            else
+            {
+                std::cout << "No data found for ID = " << user_id << std::endl;
+                g_logger->info("No rows for user id {}", user_id);
+            }
+
+        }
+
+        // 执行更新操作
+        
+
+    }
+    catch (const std::exception &e)
+    {
+        g_logger->error("数据库线程异常: {}", e.what());
+    }
+
+    g_logger->info("数据库线程 {} 结束", id);
+}
+
 int main()
 {
-    // 步骤1：读取配置
-    // 获取配置单例的引用（auto& 自动推导类型）
+    // 读取配置
     auto &config = CConfig::GetInstance();
 
     // 使用绝对路径（相对于可执行文件）
@@ -255,7 +322,6 @@ int main()
     // 加载配置文件
     if (!config.Load(configPath))
     {
-        // 如果加载失败，打印错误信息
         std::cerr << "警告: " << config.GetLastError() << std::endl;
         std::cerr << "将使用默认配置运行" << std::endl;
     }
@@ -282,40 +348,76 @@ int main()
     signal(SIGTERM, signalHandler);  // 处理 kill 命令
     g_logger->info("信号处理器已注册 (SIGINT, SIGTERM)");
 
-    // 在日志中记录关键系统事件
     g_logger->info("========== 应用程序启动 ==========");
     g_logger->info("程序启动 (PID: {})", getpid());
     g_logger->info("线程数: {}", threadCount);
     g_logger->info("运行模式: {}", daemonMode ? "守护进程" : "前台进程");
 
-    // 步骤2：判断是否转为守护进程
+    // 读取数据库连接信息
+    std::string dbname = config.GetStringDefault("dbname", "");
+    std::string dbuser = config.GetStringDefault("user", "");
+    std::string dbpass = config.GetStringDefault("password", "");
+    std::string hostaddr = config.GetStringDefault("hostaddr", "127.0.0.1");
+    int dbport = config.GetIntDefault("port", 5432);
+
+    // 判断是否转为守护进程
     if (daemonMode)
     {
         std::cout << "正在转换为守护进程..." << std::endl;
         becomeDaemon();
     }
 
-    // 步骤3：创建并运行线程
-    std::cout << "开始创建 " << threadCount << " 个线程..." << std::endl;
+    // 创建并运行单个线程
+    std::cout << "开始创建单个线程..." << std::endl;
+    g_logger->info("开始创建单个线程");
 
-    std::vector<std::thread> threads; // 创建线程容器
-    threads.reserve(threadCount);     // 预分配空间，提高效率
-
-    // 循环创建指定数量的线程
-    for (int i = 0; i < threadCount; ++i)
+    // 直接创建单个线程
+    if (!dbname.empty())
     {
-        // std::thread(threadTask, i) 创建新线程
-        // threadTask: 线程要执行的函数
-        // i: 传递给threadTask的参数
-        // push_back: 将线程对象添加到vector中
-        threads.push_back(std::thread(threadTask, i));
+        // 构建连接字符串：数据库连接信息
+        std::stringstream conn_ss;
+        conn_ss << "dbname=" << dbname
+                << " user=" << dbuser
+                << " password='" << dbpass << "'"
+                << " hostaddr=" << hostaddr
+                << " port=" << dbport;
+
+        std::string db_conn_str = conn_ss.str();
+
+        g_logger->info("将使用数据库连接 - dbname: {}, hostaddr: {}, port: {}", dbname, hostaddr, dbport);
+
+        // 创建单个数据库线程并直接 join，id 为 0
+        std::thread db_thread(dbThreadTask, db_conn_str, 0);
+        if (db_thread.joinable())
+            db_thread.join();
+    }
+    else
+    {
+        g_logger->warn("数据库连接信息不完整，跳过数据库线程创建");
     }
 
-    // 步骤4：等待所有线程完成
-    for (auto &thread : threads)
-    {
-        thread.join();
-    }
+    // // 步骤3：创建并运行线程
+    // std::cout << "开始创建 " << threadCount << " 个线程..." << std::endl;
+
+    // std::vector<std::thread> threads; // 创建线程容器
+    // threads.reserve(threadCount + 1);     // 预分配空间（包括一个数据库线程）
+
+    // // 循环创建指定数量的线程
+    // for (int i = 0; i < threadCount; ++i)
+    // {
+    //     // std::thread(threadTask, i) 创建新线程
+    //     // threadTask: 线程要执行的函数
+    //     // i: 传递给threadTask的参数
+    //     // push_back: 将线程对象添加到vector中
+    //     threads.push_back(std::thread(threadTask, i));
+    // }
+
+    // // 步骤4：等待所有线程完成
+    // for (auto &thread : threads)
+    // {
+    //     thread.join();
+    // }
+
     // 记录和显示最终状态
     g_logger->info("所有线程执行完毕");
     g_logger->info("========== 应用程序结束 ==========");
